@@ -1,0 +1,195 @@
+Private Sub CommandButton1_Click()
+    Dim ws1 As Worksheet
+    Dim ws2 As Worksheet
+    
+    ' Assign the worksheets to variables
+    Set ws1 = ThisWorkbook.Worksheets("Output_1_Bonds")
+    Set ws2 = ThisWorkbook.Worksheets("Output_2_Bonds")
+    
+    ' Clear the specified range in Output_1_Bonds
+    ws1.Range("B4:XFD1048576").Clear
+    
+    ' Recalculate Output_1_Bonds
+    ws1.Calculate
+    
+    ' Clear the specified range in Output_2_Bonds
+    ws2.Range("B4:XFD1048576").Clear
+    
+    ' Recalculate Output_2_Bonds
+    ws2.Calculate
+    
+    MsgBox "Save, close, and reopen workbook to populate."
+End Sub
+
+Private Sub CommandButton2_Click()
+    Dim ws As Worksheet
+    Dim startCell As Range
+    Dim lastCol As Long
+    Dim currentCol As Long
+    Dim nonBlankCount As Long
+    Dim count_stocks_1 As Long
+    Dim ws1 As Worksheet
+    Dim ws2 As Worksheet
+    Dim ws3 As Worksheet
+    Dim stockSymbol As String
+    Dim startRow As Long
+    Dim i As Long
+    Dim colIndex As Integer
+    Dim nextColIndex As Integer
+    Dim outputColIndex As Integer
+    Dim lastRowCell As Range
+    Dim lastRow As Long
+    Dim numColumns As Integer
+    Dim j As Integer
+    Dim currentRow As Long
+    Dim startCellForOutput As Range
+    
+    ' Define the worksheets
+    Set ws1 = ThisWorkbook.Sheets("Output_1_Bonds")
+    Set ws2 = ThisWorkbook.Sheets("Consolidated_Data_1")
+    Set ws3 = ThisWorkbook.Sheets("Consolidated_Data_2")
+    
+    ' Clear values in range B3:C1048576 of "Consolidated_Data_1"
+    ws2.Range("B3:C1048576").ClearContents
+    
+    ' Clear values in range B3:C1048576 of "Consolidated_Data_2"
+    ws3.Range("B3:C1048576").ClearContents
+
+    ' Set the worksheet and starting cell
+    Set ws = ws1
+    
+    ' Ensure the named range "starting_stock_1" exists and set it
+    On Error Resume Next
+    Set startCell = ws.Range("starting_stock_1")
+    On Error GoTo 0
+    
+    ' Check if the named range was set correctly
+    If startCell Is Nothing Then
+        MsgBox "The named range 'starting_stock_1' does not exist on the 'Output_1_Bonds' sheet.", vbExclamation
+        Exit Sub
+    End If
+    
+    ' Find the last column with data in the row of the start cell
+    lastCol = ws.Cells(startCell.Row, ws.Columns.Count).End(xlToLeft).Column
+    
+    ' Initialize non-blank count
+    nonBlankCount = 0
+    
+    ' Loop through cells from the starting cell to the last column
+    For currentCol = startCell.Column To lastCol
+        If Not IsEmpty(ws.Cells(startCell.Row, currentCol)) Then
+            nonBlankCount = nonBlankCount + 1
+        End If
+    Next currentCol
+    
+    ' Store the count into the variable count_stocks_1
+    count_stocks_1 = nonBlankCount
+    
+    ' Number of columns to process
+    numColumns = count_stocks_1
+
+    For j = 0 To numColumns - 1
+        ' Find the column index of the named range "starting_stock_1" in ws1
+        colIndex = ws1.Range("starting_stock_1").Column + j
+        nextColIndex = colIndex ' Column immediately to the right of starting_stock_1
+        
+        ' Get the stock symbol from the column immediately to the right of starting_stock_1
+        stockSymbol = ws1.Cells(ws1.Range("starting_stock_1").Row, nextColIndex).Value
+        
+        ' Count non-blank cells in the column immediately to the right of starting_stock_1
+        nonBlankCount = Application.WorksheetFunction.CountA(ws1.Range(ws1.Cells(4, nextColIndex), ws1.Cells(1048576, nextColIndex)))
+        
+        ' Find the column index of the named range "consolidated_1" in ws2
+        outputColIndex = ws2.Range("consolidated_1").Column ' Column immediately to the right of consolidated_1
+        
+        ' Locate the named range "consolidated_1" and move down to find the last non-blank row
+        With ws2.Range("consolidated_1")
+            ' Move to the first cell below the named range and find the last non-blank row
+            Set lastRowCell = .Offset(1, 0).Resize(ws2.Rows.Count - .Row).Find(What:="*", SearchOrder:=xlByRows, SearchDirection:=xlPrevious)
+            
+            If Not lastRowCell Is Nothing Then
+                lastRow = lastRowCell.Row
+            Else
+                ' If no non-blank cell is found, use the row directly below the named range
+                lastRow = .Row
+            End If
+        End With
+        
+        ' Determine the starting row for output, which is one row below the last non-blank row
+        startRow = lastRow + 1
+        
+        ' Loop through and populate cells with the stock symbol
+        For i = 0 To nonBlankCount - 1
+            ws2.Cells(startRow + i, outputColIndex).Value = stockSymbol
+        Next i
+    Next j
+
+    ' Set the worksheet and starting cell
+    Set ws = ws1
+    
+    ' Ensure the named range "starting_stock_1" exists and set it
+    On Error Resume Next
+    Set startCell = ws.Range("starting_stock_1")
+    On Error GoTo 0
+    
+    ' Check if the named range was set correctly
+    If startCell Is Nothing Then
+        MsgBox "The named range 'starting_stock_1' does not exist on the 'Output_1_Bonds' sheet.", vbExclamation
+        Exit Sub
+    End If
+    
+    ' Find the last column with data in the row of the start cell
+    lastCol = ws.Cells(startCell.Row, ws.Columns.Count).End(xlToLeft).Column
+    
+    ' Initialize non-blank count
+    nonBlankCount = 0
+    
+    ' Loop through cells from the starting cell to the last column
+    For currentCol = startCell.Column To lastCol
+        If Not IsEmpty(ws.Cells(startCell.Row, currentCol)) Then
+            nonBlankCount = nonBlankCount + 1
+        End If
+    Next currentCol
+    
+    ' Store the count into the variable count_stocks_1
+    count_stocks_1 = nonBlankCount
+    
+    ' Number of columns to process
+    numColumns = count_stocks_1
+    
+    ' Define starting cell for output
+    Set startCellForOutput = ws2.Range("consolidated_1").Offset(1, 1)
+    
+    For j = 0 To count_stocks_1 - 1
+        ' Find the column index of the named range "starting_stock_1" in ws1
+        nextColIndex = ws1.Range("starting_stock_1").Column + j
+        
+        ' Get the stock symbol from the column immediately to the right of starting_stock_1
+        stockSymbol = ws1.Cells(ws1.Range("starting_stock_1").Row, nextColIndex).Value
+        
+        ' Count non-blank cells in the column
+        nonBlankCount = Application.WorksheetFunction.CountA(ws1.Range(ws1.Cells(4, nextColIndex), ws1.Cells(ws1.Rows.Count, nextColIndex)))
+        
+        ' Find the column index of the named range "consolidated_1" in ws2
+        outputColIndex = ws2.Range("consolidated_1").Column + 1
+        
+        ' Find the last row to paste data
+        Set lastRowCell = ws2.Cells(ws2.Rows.Count, outputColIndex).End(xlUp)
+        
+        If Not IsEmpty(lastRowCell.Value) Then
+            startRow = lastRowCell.Row + 1
+        Else
+            startRow = startCellForOutput.Row
+        End If
+        
+        ' Loop through the column and populate non-blank cells in ws2
+        For i = 4 To ws1.Cells(ws1.Rows.Count, nextColIndex).End(xlUp).Row
+            If Not IsEmpty(ws1.Cells(i, nextColIndex)) Then
+                ws2.Cells(startRow, outputColIndex).Value = ws1.Cells(i, nextColIndex).Value
+                startRow = startRow + 1
+            End If
+        Next i
+    Next j
+
+
+End Sub
