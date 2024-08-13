@@ -1,0 +1,187 @@
+import pandas as pd
+import yfinance as yf
+from openpyxl import load_workbook
+from tqdm import tqdm
+import logging
+from datetime import datetime
+
+# Set up logging configuration
+logging.basicConfig(filename='distressed_stock_analysis.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Define the path to the Excel file
+excel_file_path = r"\\wsl.localhost\Ubuntu\root\Pet-Projects\Restucturing-Screener\Upload-file.xlsx"
+
+# Get current date
+current_date = datetime.now().strftime('%Y-%m-%d')
+
+# Function to read stock symbols from the named range in the specified worksheet
+def get_ticker_symbols_from_excel(file_path, named_range):
+    try:
+        # Load the workbook
+        workbook = load_workbook(file_path, data_only=True)
+        
+        # Check if the named range exists
+        if named_range not in workbook.defined_names:
+            raise ValueError(f"Named range '{named_range}' does not exist in the workbook.")
+        
+        # Access the named range
+        named_range_obj = workbook.defined_names[named_range]
+        
+        # Extract the cells from the named range
+        dests = named_range_obj.destinations
+        ticker_symbols = []
+        for title, coord in dests:
+            # Get the worksheet by title
+            ws = workbook[title]
+            # Read the cell
+            cell_value = ws[coord].value
+            if cell_value:
+                # Assuming the cell contains a comma-separated string
+                ticker_symbols.extend(ticker.strip().strip("'") for ticker in cell_value.split(','))
+        
+        return ticker_symbols
+    except Exception as e:
+        logging.error(f"Error reading Excel file: {str(e)}")
+        return []
+
+# Define a list to accumulate distressed company results
+def calculate_distressed_companies(ticker_symbols, sheet_name):
+    distressed_results = []
+
+    def calculate_ratios(ticker_symbol):
+        # Fetch the stock data
+        stock = yf.Ticker(ticker_symbol)
+        
+        # Get the balance sheet and income statement for the most recent quarter
+        balance_sheet = stock.quarterly_balance_sheet
+        income_statement = stock.quarterly_financials
+
+        # Check if data is available
+        if balance_sheet.empty or income_statement.empty:
+            logging.warning(f"No financial data available for {ticker_symbol}.")
+            return None
+        
+        # Determine the most recent quarter date
+        most_recent_quarter_date = balance_sheet.columns[0].strftime('%Y-%m-%d')
+        
+        # Extract current assets and current liabilities for the most recent quarter
+        current_assets = balance_sheet.loc['Current Assets', most_recent_quarter_date] if 'Current Assets' in balance_sheet.index else 0
+        current_liabilities = balance_sheet.loc['Current Liabilities', most_recent_quarter_date] if 'Current Liabilities' in balance_sheet.index else 0
+        
+        # Calculate ratios
+        current_ratio = current_assets / current_liabilities if current_liabilities != 0 else float('inf')
+        cash_and_cash_equivalents = balance_sheet.loc['Cash And Cash Equivalents', most_recent_quarter_date] if 'Cash And Cash Equivalents' in balance_sheet.index else 0
+        other_short_term_investments = balance_sheet.loc['Other Short Term Investments', most_recent_quarter_date] if 'Other Short Term Investments' in balance_sheet.index else 0
+        accounts_receivable = balance_sheet.loc['Accounts Receivable', most_recent_quarter_date] if 'Accounts Receivable' in balance_sheet.index else 0
+        quick_ratio = (cash_and_cash_equivalents + other_short_term_investments + accounts_receivable) / current_liabilities if current_liabilities != 0 else float('inf')
+        cash_ratio = cash_and_cash_equivalents / current_liabilities if current_liabilities != 0 else float('inf')
+        commercial_paper = balance_sheet.loc['Commercial Paper', most_recent_quarter_date] if 'Commercial Paper' in balance_sheet.index else 0
+        short_term_debt = balance_sheet.loc['Short Term Debt', most_recent_quarter_date] if 'Short Term Debt' in balance_sheet.index else 0
+        long_term_debt = balance_sheet.loc['Long Term Debt', most_recent_quarter_date] if 'Long Term Debt' in balance_sheet.index else 0
+        total_debt = short_term_debt + long_term_debt
+        working_capital = balance_sheet.loc['Working Capital', most_recent_quarter_date] if 'Working Capital' in balance_sheet.index else 0
+        total_revenue = income_statement.loc['Total Revenue', most_recent_quarter_date] if 'Total Revenue' in income_statement.index else 0
+        working_capital_ratio = working_capital / total_revenue if total_revenue != 0 else float('inf')
+        net_debt = total_debt - cash_and_cash_equivalents
+        ebitda = income_statement.loc['EBITDA', most_recent_quarter_date] if 'EBITDA' in income_statement.index else 0
+        leverage_ratio = total_debt / ebitda if ebitda != 0 else float('inf')
+
+        # Distress Criteria Check
+        distress = (current_ratio < 1 and
+                    quick_ratio < 0.8 and
+                    cash_ratio < 0.5 and
+                    leverage_ratio > 7)
+
+        if distress:
+            result = {
+                'Ticker': ticker_symbol,
+                'Most Recent Quarter Date': most_recent_quarter_date,
+                'Current Assets': current_assets,
+                'Current Liabilities': current_liabilities,
+                'Current Ratio': current_ratio,
+                'Cash And Cash Equivalents': cash_and_cash_equivalents,
+                'Other Short Term Investments': other_short_term_investments,
+                'Accounts Receivable': accounts_receivable,
+                'Quick Ratio': quick_ratio,
+                'Cash Ratio': cash_ratio,
+                'Commercial Paper': commercial_paper,
+                'Working Capital': working_capital,
+                'Total Revenue': total_revenue,
+                'Working Capital Ratio': working_capital_ratio,
+                'Net Debt': net_debt,          # Ensure Net Debt comes before Total Debt
+                'Total Debt': total_debt,      # Ensure Total Debt comes before EBITDA
+                'EBITDA': ebitda,              # Include EBITDA before Leverage Ratio
+                'Leverage Ratio': leverage_ratio
+            }
+            return result
+
+    # Calculate ratios for each ticker symbol with a progress bar
+    for ticker in tqdm(ticker_symbols, desc=f"Processing Tickers for {sheet_name}"):
+        try:
+            result = calculate_ratios(ticker)
+            if result:
+                distressed_results.append(result)
+        except Exception as e:
+            logging.error(f"Error processing ticker {ticker}: {str(e)}")
+
+    # Convert results to a DataFrame
+    distressed_df = pd.DataFrame(distressed_results)
+    
+    # Reorder columns to include Net Debt, Total Debt, EBITDA, and Leverage Ratio in the correct order
+    column_order = [
+        'Ticker', 'Most Recent Quarter Date', 'Current Assets', 'Current Liabilities',
+        'Current Ratio', 'Cash And Cash Equivalents', 'Other Short Term Investments',
+        'Accounts Receivable', 'Quick Ratio', 'Cash Ratio', 'Commercial Paper',
+        'Working Capital', 'Total Revenue', 'Working Capital Ratio', 'Net Debt',
+        'Total Debt', 'EBITDA', 'Leverage Ratio'
+    ]
+    
+    # Ensure DataFrame has all the required columns in the specified order
+    distressed_df = distressed_df.reindex(columns=column_order)
+    
+    # Save the DataFrame to the specified Excel file and sheet
+    try:
+        with pd.ExcelWriter(excel_file_path, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+            distressed_df.to_excel(writer, sheet_name=sheet_name, index=False)
+        print(f"DataFrame has been written to the Excel file in the '{sheet_name}' sheet.")
+    except Exception as e:
+        logging.error(f"Error saving DataFrame to Excel: {str(e)}")
+
+# Update the "date" named range in the "List_Filter" worksheet
+def update_last_execution_date(file_path, sheet_name, named_range, execution_date):
+    try:
+        # Load the workbook
+        workbook = load_workbook(file_path)
+        sheet = workbook[sheet_name]
+
+        # Check if the named range exists
+        if named_range not in workbook.defined_names:
+            raise ValueError(f"Named range '{named_range}' does not exist in the workbook.")
+        
+        # Access the named range
+        named_range_obj = workbook.defined_names[named_range]
+        
+        # Extract the cell location from the named range
+        dests = named_range_obj.destinations
+        for title, coord in dests:
+            ws = workbook[title]
+            # Update the cell with the new date
+            ws[coord].value = execution_date
+
+        # Save the changes
+        workbook.save(file_path)
+        print(f"Last execution date '{execution_date}' has been updated in the '{named_range}' named range.")
+    except Exception as e:
+        logging.error(f"Error updating last execution date in Excel: {str(e)}")
+
+# Process delimited_1
+named_range_1 = 'delimited_2'
+sheet_name_1 = 'Scrape_Output_2'
+ticker_symbols_1 = get_ticker_symbols_from_excel(excel_file_path, named_range_1)
+if ticker_symbols_1:
+    calculate_distressed_companies(ticker_symbols_1, sheet_name_1)
+else:
+    logging.error(f"No ticker symbols found for named range '{named_range_1}'.")
+
+# Update the last execution date
+update_last_execution_date(excel_file_path, 'List_Filter', 'date', current_date)
