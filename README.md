@@ -7,7 +7,7 @@ This script purposefully casts a wider net when finding distressed prospects bec
 
 If you are a student, check to see if your school pays for CapIQ and install the plugin. If not, the initial screening part will still work.
 
-Initially, this was one large file but it became unusable the more there were array formulas added, the more CapIQ calls there were, and trying to tie VBA, CapIQ, and Python together. To fix this I had to use less dynamic array formulas and instead use named ranges. I also split the initial screening call into its own Excel file that you can copy and paste over because the file would corrupt when using all three together. 
+Initially, this was one large file but it became unusable the more there were array formulas added, the more CapIQ calls there were, and trying to tie VBA, CapIQ, and Python together. To fix this I had to use less dynamic array formulas and instead use named ranges. I also split the initial screening call into its own Excel file that you can copy and paste over because the file would corrupt when using all three together. Also, there are two restructuring scripts because the excel TEXTJOIN function has a character limit that is less that the combination of all NASDAQ tickers, so I had to split it into two named ranges. Also excel would reject another large scrape after running the first TEXTJOIN function, so I just made a second script to run the same process but with the second TEXTJOIN cell.
 
 Update the named ranges as you rescreen for current liquidity ratios.
 
