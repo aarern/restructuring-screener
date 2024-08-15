@@ -32,5 +32,5 @@ Enable subfolders of this location to be trusted. If using a Linux terminal, on 
 
 Excel Workbook Logistics:
 1. Output_Bonds_1 and Output_Bonds_2 use CIQRANGE functions and if you rescreen for NASDAQ companies click the button on the "Documentation" sheet to clear the ranges under the CIQ functions, then save and reopen and CapIQ will repopulate the cells
-2. The VBA script will output the unique identifier for every bond the company has issued and repeat the tickers accordingly. This is a painfully long, but once finished it is used to find the trading activity of the corporate bonds and the maturity walls of the companies. The final sorted array sorts the stocks by the % of bonds trading to zero and then the number of bonds the company has issued.t
+2. The VBA script will output the unique identifier for every bond the company has issued and repeat the tickers accordingly. Once finished it is used to find the trading activity of the corporate bonds and the maturity walls of the companies. The final sorted array sorts the stocks by the % of bonds trading to zero and then the number of bonds the company has issued.t
 3. For the Maturity_Walls_Test you can modify what timeframe you want all of the bonds to mature in. I chose 30 days because that seemed the most strict for finding an indisputably large maturity wall for subject companies
