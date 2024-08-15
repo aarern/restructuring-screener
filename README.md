@@ -1,7 +1,7 @@
 # restructuring-screener
 
 Description:
-This project makes a restructuring screener that analyzes all stock tickers on NASDAQ, then pulls balance sheet information for the stocks and calculates liquidity ratios to determine if a company is in distress at first screening. The next two steps involve using CapitalIQ to pull in all of the bonds that the initial screening of companies have issued and then pull their prices and maturity dates. The purpose of this was to analyze what the current prices of the bonds are trading at and if there is a large maturity wall that the company won't be able to refinance. 
+This project makes a restructuring screener that analyzes all stock tickers on NASDAQ (Upload-file.xlsx), then pulls balance sheet information for the stocks and calculates liquidity ratios to determine if a company is in distress at first screening. The next two steps involve using CapitalIQ to pull in all of the bonds that the initial screening of companies have issued and then pull their prices and maturity dates. The purpose of this was to analyze what the current prices of the bonds are trading at and if there is a large maturity wall that the company won't be able to refinance (NASDAQ-Distressed-Watchlist.xlsm). 
 
 This script purposefully casts a wider net when finding distressed prospects because with this data you can track if a company is moving towards bankruptcy on a quarterly basis.
 
