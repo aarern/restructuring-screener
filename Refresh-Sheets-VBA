@@ -1,0 +1,22 @@
+Private Sub CommandButton1_Click()
+    Dim ws1 As Worksheet
+    Dim ws2 As Worksheet
+    
+    ' Assign the worksheets to variables
+    Set ws1 = ThisWorkbook.Worksheets("Output_1_Bonds")
+    Set ws2 = ThisWorkbook.Worksheets("Output_2_Bonds")
+    
+    ' Clear the specified range in Output_1_Bonds
+    ws1.Range("B4:XFD1048576").Clear
+    
+    ' Recalculate Output_1_Bonds
+    ws1.Calculate
+    
+    ' Clear the specified range in Output_2_Bonds
+    ws2.Range("B4:XFD1048576").Clear
+    
+    ' Recalculate Output_2_Bonds
+    ws2.Calculate
+    
+    MsgBox "Save, close, and reopen workbook to populate."
+End Sub
